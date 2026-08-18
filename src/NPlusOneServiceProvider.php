@@ -65,12 +65,14 @@ final class NPlusOneServiceProvider extends ServiceProvider
         Model::preventLazyLoading();
 
         Model::handleLazyLoadingViolationUsing(static function (Model $model, string $relation): void {
-            // Laravel does not throw for a model that has no row behind it yet
-            // or was created moments ago — loading a relation there is a first
-            // query, not an N+1. That guard sits in Model::handleLazyLoading-
-            // Violation() *after* the callback check, so registering a callback
-            // skips it. Repeat it here or every factory in the suite files a
-            // violation Laravel itself would have let through.
+            // Parity with the exception path. Laravel does not throw for a
+            // model that has no row behind it yet or was created moments ago,
+            // but that guard sits in Model::handleLazyLoadingViolation() *after*
+            // the callback check, so registering a callback skips it. In
+            // practice Builder::hydrate() already keeps most of these away from
+            // us — it only arms strict mode on models from a result set of more
+            // than one row — so this is belt and braces against the day that
+            // changes, not something that fires today.
             if (! $model->exists || $model->wasRecentlyCreated) {
                 return;
             }

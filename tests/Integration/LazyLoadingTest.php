@@ -55,14 +55,28 @@ final class LazyLoadingTest extends TestCase
     public function test_the_recorded_fingerprint_carries_the_model_class_and_the_relation_name(): void
     {
         Database::seed();
+        Author::create(['name' => 'Octavia']);
         Collector::reset();
 
-        $author = Author::query()->firstOrFail();
-        $this->assertCount(2, $author->books);
+        // Two rows on purpose. Builder::hydrate() only marks a model as
+        // lazy-load-prevented when the result set had more than one row, on the
+        // reasoning that a single model cannot be an N+1 — so a one-row query is
+        // invisible to strict mode, and therefore to this package.
+        $loaded = 0;
+
+        foreach (Author::query()->get() as $author) {
+            $loaded += $author->books->count();
+        }
+
+        $this->assertSame(2, $loaded);
 
         $violations = Collector::violations();
 
-        $this->assertArrayHasKey(Author::class.'::books', $violations);
+        $this->assertArrayHasKey(
+            Author::class.'::books',
+            $violations,
+            'recorded instead: '.(implode(', ', array_keys($violations)) ?: '(nothing)'),
+        );
         $this->assertSame(Author::class, $violations[Author::class.'::books']->model);
         $this->assertSame('books', $violations[Author::class.'::books']->relation);
     }

@@ -10,3 +10,14 @@ parameters:
         - config
         - src
         - tests
+
+    ignoreErrors:
+        # larastan works out where "the config directory" is from the
+        # application it boots, which for a package is the Testbench skeleton —
+        # so a package shipping its own config/ is always outside it. Calling
+        # env() in a config file is exactly what Laravel's own shipped config
+        # files do, and it is the only place this package calls it; everything
+        # else reads the value back through config().
+        -
+            message: '#Called .env. outside of the config directory#'
+            path: config/nplusone.php

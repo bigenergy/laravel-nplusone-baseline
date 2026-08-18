@@ -10,7 +10,6 @@ use BigEnergy\NPlusOne\PHPUnit\WriteReportWhenRunEnds;
 use PHPUnit\Event\Code\Test;
 use PHPUnit\Event\Test\Prepared;
 use PHPUnit\Event\Test\PreparedSubscriber;
-use PHPUnit\Event\TestRunner\ExecutionFinished;
 use PHPUnit\Event\TestRunner\ExecutionFinishedSubscriber;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Runner\Extension\Extension;
@@ -24,20 +23,30 @@ use ReflectionParameter;
  * The package supports three PHPUnit majors and this corner of the API has
  * moved before. When it moves again these fail with a name, instead of the
  * whole suite quietly collecting nothing.
+ *
+ * Everything here is checked through reflection rather than instanceof: a
+ * static analyser resolves instanceof against the version that happens to be
+ * installed and calls the assertion redundant, which is precisely the check
+ * being made — just at the wrong time.
  */
 final class ExtensionApiTest extends TestCase
 {
     public function test_the_extension_matches_the_installed_extension_interface(): void
     {
-        // Instantiating is most of the assertion: PHP refuses to load the class
-        // at all if bootstrap() no longer matches Extension::bootstrap().
-        $this->assertInstanceOf(Extension::class, new NPlusOneExtension());
+        // Loading the class is most of the assertion: PHP refuses to load it at
+        // all if bootstrap() stops matching Extension::bootstrap().
+        $extension = new NPlusOneExtension;
+
+        $this->assertContains(Extension::class, class_implements($extension) ?: []);
+
+        $bootstrap = new ReflectionMethod($extension, 'bootstrap');
+
+        $this->assertTrue($bootstrap->isPublic());
+        $this->assertSame(3, $bootstrap->getNumberOfParameters());
     }
 
     public function test_the_runner_facade_still_accepts_variadic_subscribers(): void
     {
-        $this->assertTrue(method_exists(Facade::class, 'registerSubscribers'));
-
         $parameters = (new ReflectionMethod(Facade::class, 'registerSubscribers'))->getParameters();
         $first = $parameters[0] ?? null;
 
@@ -47,15 +56,21 @@ final class ExtensionApiTest extends TestCase
 
     public function test_the_subscribers_implement_the_events_they_are_registered_for(): void
     {
-        $this->assertInstanceOf(PreparedSubscriber::class, new RecordCurrentTest());
-        $this->assertInstanceOf(ExecutionFinishedSubscriber::class, new WriteReportWhenRunEnds());
+        $this->assertContains(
+            PreparedSubscriber::class,
+            class_implements(new RecordCurrentTest) ?: [],
+        );
+        $this->assertContains(
+            ExecutionFinishedSubscriber::class,
+            class_implements(new WriteReportWhenRunEnds) ?: [],
+        );
     }
 
     public function test_the_events_still_expose_what_the_subscribers_read_from_them(): void
     {
-        $this->assertTrue(method_exists(Prepared::class, 'test'));
-        $this->assertTrue(method_exists(Test::class, 'id'));
-        $this->assertTrue(interface_exists(ExecutionFinishedSubscriber::class));
-        $this->assertTrue(class_exists(ExecutionFinished::class));
+        // Constructing these throws ReflectionException the moment PHPUnit
+        // renames or drops either method, which is the breakage worth catching.
+        $this->assertTrue((new ReflectionMethod(Prepared::class, 'test'))->isPublic());
+        $this->assertTrue((new ReflectionMethod(Test::class, 'id'))->isPublic());
     }
 }

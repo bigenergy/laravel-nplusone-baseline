@@ -10,6 +10,7 @@ use BigEnergy\NPlusOne\Tests\Concerns\BuildsViolations;
 use BigEnergy\NPlusOne\Tests\TestCase;
 use BigEnergy\NPlusOne\Violation;
 use Illuminate\Console\Command;
+use Illuminate\Testing\PendingCommand;
 
 final class CommandsTest extends TestCase
 {
@@ -17,7 +18,7 @@ final class CommandsTest extends TestCase
 
     public function test_check_fails_when_there_is_no_report_to_check(): void
     {
-        $this->artisan('nplusone:check')
+        $this->nplusone('nplusone:check')
             ->expectsOutputToContain('No report found')
             ->assertExitCode(Command::FAILURE)
             ->run();
@@ -27,7 +28,7 @@ final class CommandsTest extends TestCase
     {
         $this->writeReport($this->violation('App\Models\Order', 'manager'));
 
-        $this->artisan('nplusone:check')
+        $this->nplusone('nplusone:check')
             ->assertExitCode(Command::FAILURE)
             ->run();
     }
@@ -39,7 +40,7 @@ final class CommandsTest extends TestCase
         $this->writeReport($violation);
         (new Baseline($this->baselinePath()))->write($this->keyed($violation));
 
-        $this->artisan('nplusone:check')
+        $this->nplusone('nplusone:check')
             ->assertExitCode(Command::SUCCESS)
             ->run();
     }
@@ -51,14 +52,14 @@ final class CommandsTest extends TestCase
             $this->violation('App\Models\Invoice', 'lines'),
         );
 
-        $this->artisan('nplusone:baseline')
+        $this->nplusone('nplusone:baseline')
             ->assertExitCode(Command::SUCCESS)
             ->run();
 
         $this->assertFileExists($this->baselinePath());
         $this->assertCount(2, (new Baseline($this->baselinePath()))->load());
 
-        $this->artisan('nplusone:check')
+        $this->nplusone('nplusone:check')
             ->assertExitCode(Command::SUCCESS)
             ->run();
     }
@@ -67,14 +68,14 @@ final class CommandsTest extends TestCase
     {
         $this->writeReport($this->violation('App\Models\Order', 'manager'));
 
-        $this->artisan('nplusone:baseline')->assertExitCode(Command::SUCCESS)->run();
+        $this->nplusone('nplusone:baseline')->assertExitCode(Command::SUCCESS)->run();
 
         $this->writeReport(
             $this->violation('App\Models\Order', 'manager'),
             $this->violation('App\Models\Order', 'customer'),
         );
 
-        $this->artisan('nplusone:check')
+        $this->nplusone('nplusone:check')
             ->expectsOutputToContain('App\Models\Order::customer')
             ->assertExitCode(Command::FAILURE)
             ->run();
@@ -84,11 +85,11 @@ final class CommandsTest extends TestCase
     {
         $this->writeReport($this->violation('App\Models\Order', 'manager', hits: 2));
 
-        $this->artisan('nplusone:baseline')->assertExitCode(Command::SUCCESS)->run();
+        $this->nplusone('nplusone:baseline')->assertExitCode(Command::SUCCESS)->run();
 
         $this->writeReport($this->violation('App\Models\Order', 'manager', hits: 47));
 
-        $this->artisan('nplusone:check')
+        $this->nplusone('nplusone:check')
             ->assertExitCode(Command::SUCCESS)
             ->run();
     }
@@ -100,11 +101,11 @@ final class CommandsTest extends TestCase
             $this->violation('App\Models\Invoice', 'lines'),
         );
 
-        $this->artisan('nplusone:baseline')->assertExitCode(Command::SUCCESS)->run();
+        $this->nplusone('nplusone:baseline')->assertExitCode(Command::SUCCESS)->run();
 
         $this->writeReport($this->violation('App\Models\Order', 'manager'));
 
-        $this->artisan('nplusone:check')
+        $this->nplusone('nplusone:check')
             ->expectsOutputToContain('App\Models\Invoice::lines')
             ->assertExitCode(Command::SUCCESS)
             ->run();
@@ -117,11 +118,11 @@ final class CommandsTest extends TestCase
             $this->violation('App\Models\Invoice', 'lines'),
         );
 
-        $this->artisan('nplusone:baseline')->assertExitCode(Command::SUCCESS)->run();
+        $this->nplusone('nplusone:baseline')->assertExitCode(Command::SUCCESS)->run();
 
         $this->writeReport($this->violation('App\Models\Order', 'manager'));
 
-        $this->artisan('nplusone:check', ['--prune' => true])
+        $this->nplusone('nplusone:check', ['--prune' => true])
             ->assertExitCode(Command::FAILURE)
             ->run();
     }
@@ -133,7 +134,7 @@ final class CommandsTest extends TestCase
             $this->keyed($this->violation('App\Models\Order', 'manager')),
         );
 
-        $this->artisan('nplusone:baseline')
+        $this->nplusone('nplusone:baseline')
             ->expectsConfirmation('A baseline with 1 entry already exists. Overwrite it?', 'no')
             ->assertExitCode(Command::SUCCESS)
             ->run();
@@ -146,7 +147,7 @@ final class CommandsTest extends TestCase
             $this->keyed($this->violation('App\Models\Invoice', 'lines')),
         );
 
-        $this->artisan('nplusone:baseline', ['--force' => true])
+        $this->nplusone('nplusone:baseline', ['--force' => true])
             ->assertExitCode(Command::SUCCESS)
             ->run();
 
@@ -163,18 +164,34 @@ final class CommandsTest extends TestCase
 
         (new Reporter($report))->write($this->keyed($this->violation('App\Models\Order', 'manager')));
 
-        $this->artisan('nplusone:baseline', ['--report' => $report, '--baseline' => $baseline, '--force' => true])
+        $this->nplusone('nplusone:baseline', ['--report' => $report, '--baseline' => $baseline, '--force' => true])
             ->assertExitCode(Command::SUCCESS)
             ->run();
 
         $this->assertFileExists($baseline);
 
-        $this->artisan('nplusone:check', ['--report' => $report, '--baseline' => $baseline])
+        $this->nplusone('nplusone:check', ['--report' => $report, '--baseline' => $baseline])
             ->assertExitCode(Command::SUCCESS)
             ->run();
 
         unlink($report);
         unlink($baseline);
+    }
+
+    /**
+     * artisan() is typed PendingCommand|int because it returns an exit code once
+     * the command has already run. Inside a test it is always the pending
+     * command, but only a runtime check can say so.
+     *
+     * @param  array<string, mixed>  $parameters
+     */
+    private function nplusone(string $command, array $parameters = []): PendingCommand
+    {
+        $pending = $this->artisan($command, $parameters);
+
+        $this->assertInstanceOf(PendingCommand::class, $pending);
+
+        return $pending;
     }
 
     private function writeReport(Violation ...$violations): void

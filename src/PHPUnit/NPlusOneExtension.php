@@ -33,8 +33,8 @@ final class NPlusOneExtension implements Extension
         ParameterCollection $parameters,
     ): void {
         $facade->registerSubscribers(
-            new RecordCurrentTest(),
-            new WriteReportWhenRunEnds(),
+            new RecordCurrentTest,
+            new WriteReportWhenRunEnds,
         );
     }
 }

@@ -117,6 +117,11 @@ Pest works — it runs on PHPUnit, so the extension applies unchanged.
 
 ## Known limitations
 
+- **Single-row queries are invisible.** Laravel arms strict mode on a model only when
+  it came out of a result set with more than one row (`Builder::hydrate()`), on the
+  reasoning that one model cannot be an N+1. A relation lazy loaded on a model from
+  `find()`, `first()` or `firstOrFail()` therefore never counts as a violation — for
+  Laravel's own exception, and so for this package. Coverage here is exactly Laravel's.
 - Blade violations are resolved back to the `.blade.php` source via the `PATH` comment
   Laravel embeds in compiled views. If that comment is absent, the compiled file path
   is reported instead.

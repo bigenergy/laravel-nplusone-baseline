@@ -7,6 +7,7 @@ namespace BigEnergy\NPlusOne\Tests;
 use BigEnergy\NPlusOne\NPlusOneServiceProvider;
 use BigEnergy\NPlusOne\Tests\Concerns\UsesWorkspace;
 use Illuminate\Contracts\Config\Repository;
+use Illuminate\Foundation\Application;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
@@ -30,7 +31,7 @@ abstract class TestCase extends Orchestra
     }
 
     /**
-     * @param  \Illuminate\Foundation\Application  $app
+     * @param  Application  $app
      * @return array<int, class-string>
      */
     protected function getPackageProviders($app): array
@@ -39,7 +40,7 @@ abstract class TestCase extends Orchestra
     }
 
     /**
-     * @param  \Illuminate\Foundation\Application  $app
+     * @param  Application  $app
      */
     protected function defineEnvironment($app): void
     {

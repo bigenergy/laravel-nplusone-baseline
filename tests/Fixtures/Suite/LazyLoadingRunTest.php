@@ -9,6 +9,7 @@ use BigEnergy\NPlusOne\Tests\Fixtures\Book;
 use BigEnergy\NPlusOne\Tests\Fixtures\Database;
 use BigEnergy\NPlusOne\Tests\Fixtures\EndToEnd;
 use Illuminate\Contracts\Config\Repository;
+use Illuminate\Foundation\Application;
 use Orchestra\Testbench\TestCase;
 
 /**
@@ -38,7 +39,7 @@ final class LazyLoadingRunTest extends TestCase
     }
 
     /**
-     * @param  \Illuminate\Foundation\Application  $app
+     * @param  Application  $app
      * @return array<int, class-string>
      */
     protected function getPackageProviders($app): array
@@ -47,7 +48,7 @@ final class LazyLoadingRunTest extends TestCase
     }
 
     /**
-     * @param  \Illuminate\Foundation\Application  $app
+     * @param  Application  $app
      */
     protected function defineEnvironment($app): void
     {
