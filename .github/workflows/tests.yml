@@ -74,6 +74,11 @@ jobs:
           extensions: dom, curl, libxml, mbstring, zip, fileinfo, sqlite3, pdo_sqlite
           coverage: none
 
+      # Packagist rejects a manifest the schema does not accept, and it does
+      # so after the tag is already pushed. Cheaper to hear it here.
+      - name: Validate composer.json
+        run: composer validate --strict --no-check-lock
+
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction --no-progress
 

@@ -4,7 +4,8 @@
     "keywords": [
         "laravel",
         "eloquent",
-        "n+1",
+        "n-plus-one",
+        "nplusone",
         "performance",
         "ci",
         "baseline",
