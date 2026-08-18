@@ -69,10 +69,11 @@ final class NPlusOneServiceProvider extends ServiceProvider
             // model that has no row behind it yet or was created moments ago,
             // but that guard sits in Model::handleLazyLoadingViolation() *after*
             // the callback check, so registering a callback skips it. In
-            // practice Builder::hydrate() already keeps most of these away from
-            // us — it only arms strict mode on models from a result set of more
-            // than one row — so this is belt and braces against the day that
-            // changes, not something that fires today.
+            // practice Laravel 12's Builder::hydrate() keeps most of these
+            // away from us on its own, by only arming strict mode on models
+            // from a result set of more than one row. That gate is an
+            // implementation detail of one version in the supported range, so
+            // the guard stays.
             if (! $model->exists || $model->wasRecentlyCreated) {
                 return;
             }

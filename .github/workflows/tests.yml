@@ -35,12 +35,24 @@ jobs:
           extensions: dom, curl, libxml, mbstring, zip, fileinfo, sqlite3, pdo_sqlite
           coverage: none
 
+      # Laravel 11 is out of its security-fix window, so every release in
+      # the 11.x line now carries unpatched advisories and Composer refuses
+      # to resolve any of them. This leg of the matrix exists to prove the
+      # package still runs on 11, which means installing it. The runner is
+      # ephemeral and nothing built here is deployed or published; Laravel
+      # 12 resolves normally and keeps the block switched on.
+      - name: Let the Laravel 11 line resolve despite its advisories
+        if: matrix.laravel == '11.*'
+        run: |
+          php -r '$f = "composer.json"; $j = json_decode(file_get_contents($f), true); $j["config"]["policy"]["advisories"]["block"] = false; file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);'
+
       - name: Install dependencies
         run: |
           composer require --no-interaction --no-update \
             "illuminate/console:${{ matrix.laravel }}" \
             "illuminate/database:${{ matrix.laravel }}" \
-            "illuminate/support:${{ matrix.laravel }}" \
+            "illuminate/support:${{ matrix.laravel }}"
+          composer require --dev --no-interaction --no-update \
             "orchestra/testbench:${{ matrix.testbench }}"
           composer update --prefer-dist --no-interaction --no-progress
 
