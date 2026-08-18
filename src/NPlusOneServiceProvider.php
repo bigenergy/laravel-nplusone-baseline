@@ -13,13 +13,19 @@ use Illuminate\Support\ServiceProvider;
 final class NPlusOneServiceProvider extends ServiceProvider
 {
     /**
-     * Eloquent's strict-mode switches are static properties on Model, not
-     * container bindings, so they outlive the application Laravel rebuilds
-     * between tests and only need installing once per process. The shutdown
-     * hook does too — registering it on every boot would queue up one call per
-     * test in the suite.
+     * Guards the shutdown hook only.
+     *
+     * Eloquent's strict-mode switches look like they belong here too — they are
+     * static properties on Model rather than container bindings, so the obvious
+     * reading is that they outlive the application Testbench rebuilds between
+     * tests. They do not: Testbench resets them in its teardown, by way of
+     * ApplicationTestingHooks::tearDownTheApplicationTestingHooks(). Installing
+     * them once per process collects violations from the first test and
+     * silently nothing after it, which is worse than not collecting at all.
+     * LazyLoadingTest::test_strict_mode_is_installed_by_the_service_provider
+     * exists to keep that from coming back.
      */
-    private static bool $installed = false;
+    private static bool $shutdownHookRegistered = false;
 
     public function register(): void
     {
@@ -48,12 +54,9 @@ final class NPlusOneServiceProvider extends ServiceProvider
         Collector::enable();
         Reporter::rememberDefaultPath($this->reportPath());
 
-        if (self::$installed) {
-            return;
-        }
-
-        self::$installed = true;
-
+        // Re-installed on every boot, not once per process: see the note on
+        // $shutdownHookRegistered.
+        //
         // preventLazyLoading() is Laravel's own strict mode. On its own it
         // throws on the first violation, which is why it is unusable on an
         // existing codebase. handleLazyLoadingViolationUsing() replaces that
@@ -75,13 +78,19 @@ final class NPlusOneServiceProvider extends ServiceProvider
             Collector::record($model::class, $relation);
         });
 
-        // Fallback for runners that never load the PHPUnit extension: a bare
-        // script, a paratest worker, PHPUnit 9. Without it the report would
-        // never reach disk. flush() is idempotent and swallows its own errors,
-        // so the extension having already written the same file is harmless.
-        register_shutdown_function(static function (): void {
-            Reporter::flush();
-        });
+        // This one really is once per process. Fallback for runners that never
+        // load the PHPUnit extension: a bare script, a paratest worker,
+        // PHPUnit 9. Without it the report would never reach disk. flush() is
+        // idempotent and swallows its own errors, so the extension having
+        // already written the same file is harmless — but registering the hook
+        // per boot would queue one call per test in the suite.
+        if (! self::$shutdownHookRegistered) {
+            self::$shutdownHookRegistered = true;
+
+            register_shutdown_function(static function (): void {
+                Reporter::flush();
+            });
+        }
     }
 
     private function shouldCollect(): bool
