@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="../../../vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="../../../vendor/autoload.php"
+         cacheDirectory="../../../.phpunit.cache/fixture"
+         colors="false"
+>
+    <testsuites>
+        <testsuite name="Fixture">
+            <directory>.</directory>
+        </testsuite>
+    </testsuites>
+
+    <!-- The whole reason this fixture suite exists: the extension is what has
+         to write the report once the run is over. -->
+    <extensions>
+        <bootstrap class="BigEnergy\NPlusOne\PHPUnit\NPlusOneExtension"/>
+    </extensions>
+</phpunit>
